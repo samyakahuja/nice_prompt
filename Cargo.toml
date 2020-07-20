@@ -1,0 +1,12 @@
+[package]
+name = "nice_prompt"
+version = "0.1.0"
+authors = ["samyakahuja <samyak.mcs18.du@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+git2 = "0.13.6"
+ansi_term = "0.12.1"
+
+[dev-dependencies]
+temp_testdir = "0.2.3"
