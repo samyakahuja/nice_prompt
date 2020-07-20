@@ -2,7 +2,7 @@ use git2::{
     Repository,
     Delta,
 };
-use std::path::Path;
+//use std::path::Path;
 
 #[cfg(test)]
 mod tests;

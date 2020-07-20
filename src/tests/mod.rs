@@ -1,13 +1,11 @@
 mod test_helpers;
 
-use git2::{
-    Repository,
-    Index,
-};
+use git2::Repository;
 use temp_testdir::TempDir;
-use std::path::{Path, PathBuf};
-use std::fs::File;
-use test_helpers::*;
+use std::path::PathBuf;
+use std::fs::{File, remove_file};
+use std::io::Write;
+//use test_helpers::*;
 use crate::Prompt;
 
 #[test]
@@ -21,16 +19,16 @@ fn prompt_git_status() {
     assert_eq!(prompt.git_status(), None);
 
     // Create file
-    let file_name = "test_file_01";
-    let temp_file_path = temp_dir_path.join(PathBuf::from(file_name));
-    File::create(&temp_file_path).unwrap();
+    let file_name_01 = "test_file_01";
+    let temp_file_path_01 = temp_dir_path.join(PathBuf::from(file_name_01));
+    let mut file_01 = File::create(&temp_file_path_01).unwrap();
     assert_eq!(prompt.git_status().unwrap(), "?".to_string());
 
     // Add file
     let mut index = prompt.repo.index().unwrap();
 
     assert_eq!(index.len(), 0);
-    index.add_path(PathBuf::from(file_name).as_path()).unwrap();
+    index.add_path(PathBuf::from(file_name_01).as_path()).unwrap();
     assert_eq!(index.len(), 1);
 
     let index_entry_paths = index
@@ -40,6 +38,29 @@ fn prompt_git_status() {
         })
         .collect::<Vec<_>>();
 
-    assert_eq!(index_entry_paths, [file_name]);
+    assert_eq!(index_entry_paths, [file_name_01]);
+    assert_eq!(prompt.git_status(), None);
+
+    // Modify existing file
+    file_01.write_all(b"Hello, World!").unwrap();
+    assert_eq!(prompt.git_status().unwrap(), "!".to_string());
+
+    // Create new file
+    let file_name_02 = "test_file_02";
+    let temp_file_path_02 = temp_dir_path.join(PathBuf::from(file_name_02));
+    File::create(&temp_file_path_02).unwrap();
+    assert!(prompt.git_status().unwrap().contains("?"));
+    assert!(prompt.git_status().unwrap().contains("!"));
+
+    // Add both files
+    index.add_path(PathBuf::from(file_name_01).as_path()).unwrap();
+    assert!(!prompt.git_status().unwrap().contains("!"));
+    index.add_path(PathBuf::from(file_name_02).as_path()).unwrap();
+    assert_eq!(prompt.git_status(), None);
+
+    // Delete file
+    remove_file(temp_file_path_02).unwrap();
+    assert!(prompt.git_status().unwrap().contains("✘"));
+    index.remove_path(PathBuf::from(file_name_02).as_path()).unwrap();
     assert_eq!(prompt.git_status(), None);
 }
