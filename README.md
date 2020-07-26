@@ -1,13 +1,20 @@
 # nice_prompt
 
-To install run
+> Minimal prompt for my shell.
 
-```shell
-cargo install --force --git https://github.com/samyakahuja/nice_prompt.git
-```
+[![asciicast](https://asciinema.org/a/349727.svg)](https://asciinema.org/a/349727)
 
-Put this in your `.bashrc`
+## Usage
 
-```shell
-PS1='$(nice_prompt)'
-```
+- Install [rust](https://rustup.rs/)
+- Install `nice_prompt`
+
+    ```shell
+    cargo install --force --git https://github.com/samyakahuja/nice_prompt.git
+    ```
+
+- Put this in your `.bashrc`
+
+    ```shell
+    PS1='$(nice_prompt)'
+    ```
