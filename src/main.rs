@@ -3,6 +3,9 @@ use git2::{
     Status,
 };
 use ansi_term::Color;
+use std::path::{Path, PathBuf};
+use itertools::{Itertools, Position};
+use dirs::home_dir;
 
 #[cfg(test)]
 mod tests;
@@ -27,7 +30,7 @@ fn main() {
 
     let out = format!("{} {}\n{} ", dir_prompt_out, git_prompt_out, config.prompt_symbol);
 
-    println!("{}", out);
+    println!("\n{}", out);
 }
 
 pub struct PromptConfig {
@@ -50,7 +53,7 @@ impl Default for PromptConfig {
             git_status_unstaged_symbol: "!",
             git_status_staged_symbol: "+",
             prompt_symbol: "❯",
-            dir_style: DirStyle::FullPath,
+            dir_style: DirStyle::FirstLetterFullPath,
             dir_home_symbol: Some("~"),
             dir_color: Color::White,
             git_branch_color: Color::RGB(69,133,136),
@@ -175,13 +178,168 @@ enum DirStyle {
     ShortestUniqueSymbol,
 }
 
+impl DirStyle {
+    pub fn apply(&self, path: &Path, config: &PromptConfig) -> String {
+        match self {
+            Self::FullPath => full_path(path, config),
+            Self::CurrentDir => current_dir(path, config),
+            Self::FirstLetterFullPath => first_letter_full_path(path, config),
+            Self::ShortestUniqueSymbol => shortest_unique_symbol(path, config)
+        }
+    }
+}
+
+// TODO: consider using a crate for this.
+fn encode_home_symbol(path: &Path, symbol: &str) -> Option<String> {
+    let home_dir = std::env::var("HOME").ok()?;
+    let wd = format!("{}", path.display());
+
+    if path.starts_with(&home_dir) {
+        Some(wd.replacen(&home_dir, symbol, 1))
+    } else {
+        None
+    }
+}
+
+fn full_path(path: &Path, config: &PromptConfig) -> String {
+    match config.dir_home_symbol {
+        Some(dir_home_symbol) => match encode_home_symbol(path, dir_home_symbol) {
+            Some(encoded_path) => encoded_path,
+            None => format!("{}", path.display()),
+        }
+        None => format!("{}", path.display()),
+    }
+}
+
+/// Outputs only the current directory using `full_path` as a fallback.
+fn current_dir(path: &Path, config: &PromptConfig) -> String {
+    match config.dir_home_symbol {
+        Some(dir_home_symbol) => match encode_home_symbol(path, dir_home_symbol) {
+            Some(wd) => { 
+                if dir_home_symbol == wd {
+                    return wd;
+                }
+            }
+            None => {}
+        },
+        None => {}
+    }
+
+    match path.components().last() {
+        Some(item) => {
+            match item.as_os_str().to_str() {
+                Some(s) => s.to_string(),
+                None => full_path(path, config)
+            }
+        },
+        None => full_path(path, config)
+    }
+}
+
+fn first_letter_full_path(path: &Path, config: &PromptConfig) -> String {
+    let mut ret_path = String::new();
+
+    let mut ancestors = path.ancestors().collect::<Vec<_>>();
+    ancestors.reverse();
+
+    let home_dir_pos = ancestors
+        .iter()
+        .position(|&i| i == home_dir().unwrap().as_path());
+
+    if let Some(dir_home_symbol) = config.dir_home_symbol {
+        if let Some(index) = home_dir_pos {
+                ancestors.drain(..index);
+                ret_path.push_str(dir_home_symbol);
+        }
+    }
+
+    for pos in ancestors.iter().with_position() {
+        match pos {
+            Position::First(_) => ret_path.push('/'),
+            Position::Only(_) => {
+                if !home_dir_pos.is_some() {
+                    ret_path.push('/');
+                }
+            },
+            _ => {}
+        }
+
+        match pos {
+            Position::Last(inner) => {
+                ret_path.push_str(&path_file_name_to_string(inner).unwrap())
+            },
+            Position::Only(inner) => {
+                if let Some("/") = inner.to_str() {
+                    continue;
+                }
+                if !home_dir_pos.is_some() {
+                    ret_path.push_str(&path_file_name_to_string(inner).unwrap())
+                }
+            },
+            Position::First(inner) => {
+                if let Some("/") = inner.to_str() {
+                    continue;
+                }
+                if !home_dir_pos.is_some() {
+                    dbg!(inner);
+                    let first_letter = path_file_name_to_string(inner)
+                        .unwrap()
+                        .chars()
+                        .next()
+                        .unwrap();
+                    ret_path.push(first_letter);
+                }
+            },
+            Position::Middle(inner) => {
+                let first_letter = path_file_name_to_string(inner)
+                    .unwrap()
+                    .chars()
+                    .next()
+                    .unwrap();
+                ret_path.push(first_letter);
+            }
+        }
+
+        match pos {
+            Position::Middle(_) => ret_path.push('/'),
+            _ => {}
+        }
+    }
+
+    ret_path
+}
+
+fn path_file_name_to_string(path: &Path) -> Option<String> {
+    Some(path.file_name()?.to_str()?.to_string())
+}
+
+fn shortest_unique_symbol(path: &Path, config: &PromptConfig) -> String {
+    let mut ret_path = String::new();
+
+    if let Some(dir_home_symbol) = config.dir_home_symbol {
+        if let Some(_) = encode_home_symbol(path, dir_home_symbol) {
+            ret_path = dir_home_symbol.to_string();
+        }
+    }
+
+    let mut ancestors = path.ancestors().collect::<Vec<_>>();
+    ancestors.reverse();
+
+    for ancestor in ancestors.iter().take(ancestors.len() - 1) {
+        dbg!(ancestor);
+    }
+    dbg!(ancestors.last().unwrap());
+
+    dbg!(&ret_path);
+    todo!()
+}
+
 #[derive(Debug)]
 struct DirPrompt;
 
 impl DirPrompt {
-    pub fn working_dir(&self) -> Option<String> {
-        let path = std::env::current_dir().ok()?;
-        Some(format!("{}", path.display()))
+    pub fn working_dir(&self) -> Option<PathBuf> {
+        std::env::current_dir().ok()
     }
 
     pub fn styled_working_dir(&self, config: &PromptConfig) -> Option<String> {
@@ -190,28 +348,7 @@ impl DirPrompt {
             None => return None,
         };
 
-        // TODO: consider using a crate for this.
-        let wd = match config.dir_home_symbol {
-            Some(symbol) => {
-                let home_dir = std::env::var("HOME").ok()?;
-                let wd_path = std::path::Path::new(&wd);
-
-                if wd_path.starts_with(&home_dir) {
-                    wd.replacen(&home_dir, symbol, 1)
-                } else {
-                    wd
-                }
-            },
-            None => wd,
-        };
-
-        // TODO: implement various dir styles
-        let wd = match config.dir_style {
-            DirStyle::FullPath => wd,
-            DirStyle::CurrentDir => wd,
-            DirStyle::FirstLetterFullPath => wd,
-            DirStyle::ShortestUniqueSymbol => wd,
-        };
+        let wd = config.dir_style.apply(&wd, config);
 
         Some(wd)
     }

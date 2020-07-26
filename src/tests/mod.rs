@@ -2,14 +2,17 @@ mod test_helpers;
 
 use git2::Repository;
 use temp_testdir::TempDir;
-use std::path::PathBuf;
-use std::fs::{File, remove_file};
-use std::io::Write;
+use std::path::{PathBuf, Path};
+use std::fs::File;
+//use std::io::Write;
 //use test_helpers::*;
 use crate::{
     GitPrompt,
     GitStatus,
-    PromptConfig
+    PromptConfig,
+    full_path,
+    current_dir,
+    first_letter_full_path,
 };
 
 #[test]
@@ -41,4 +44,106 @@ fn git_prompt() {
 
     assert_eq!(index_entry_paths, [file_name_01]);
     assert_eq!(prompt.git_status().unwrap(), GitStatus::Staged);
+}
+
+#[test]
+fn dir_style_full_path() {
+    let path_str = "/home/samyak/Desktop/foo/bar/baz";
+    let path = Path::new(&path_str);
+    let expected = "~/Desktop/foo/bar/baz";
+    let config = PromptConfig::default();
+    assert_eq!(full_path(path, &config), expected);
+
+    let path_str = "/home/samyak";
+    let path = Path::new(&path_str);
+    let expected = "~";
+    let config = PromptConfig::default();
+    assert_eq!(full_path(path, &config), expected);
+
+    let path_str = "/usr/share";
+    let path = Path::new(&path_str);
+    let expected = path_str;
+    let config = PromptConfig::default();
+    assert_eq!(full_path(path, &config), expected);
+
+    let path_str = "/home/samyak/Desktop/foo/bar/baz";
+    let path = Path::new(&path_str);
+    let expected = path_str;
+    let config = PromptConfig {
+        dir_home_symbol: None,
+        ..PromptConfig::default()
+    };
+    assert_eq!(full_path(path, &config), expected);
+}
+
+#[test]
+fn dir_style_current_dir() {
+    let path_str = "/home/samyak/Desktop/foo/bar/baz";
+    let path = Path::new(&path_str);
+    let expected = "baz";
+    let config = PromptConfig::default();
+    assert_eq!(current_dir(path, &config), expected);
+
+    let path_str = "/home/samyak";
+    let path = Path::new(&path_str);
+    let expected = "~";
+    let config = PromptConfig::default();
+    assert_eq!(current_dir(path, &config), expected);
+
+    let path_str = "/usr/share";
+    let path = Path::new(&path_str);
+    let expected = "share";
+    let config = PromptConfig::default();
+    assert_eq!(current_dir(path, &config), expected);
+
+    let path_str = "/home/samyak";
+    let path = Path::new(&path_str);
+    let expected = "samyak";
+    let config = PromptConfig {
+        dir_home_symbol: None,
+        ..PromptConfig::default()
+    };
+    assert_eq!(current_dir(path, &config), expected);
+}
+
+#[test]
+fn dir_style_first_letter_full_path() {
+    let path_str = "/home/samyak/Desktop/foo/bar/baz";
+    let path = Path::new(&path_str);
+    let expected = "~/D/f/b/baz";
+    let config = PromptConfig::default();
+    assert_eq!(first_letter_full_path(path, &config), expected);
+
+    let path_str = "/";
+    let path = Path::new(&path_str);
+    let expected = "/";
+    let config = PromptConfig::default();
+    assert_eq!(first_letter_full_path(path, &config), expected);
+
+    let path_str = "/home";
+    let path = Path::new(&path_str);
+    let expected = "/home";
+    let config = PromptConfig::default();
+    assert_eq!(first_letter_full_path(path, &config), expected);
+
+    let path_str = "/home/samyak";
+    let path = Path::new(&path_str);
+    let expected = "~";
+    let config = PromptConfig::default();
+    assert_eq!(first_letter_full_path(path, &config), expected);
+
+    let path_str = "/usr/share";
+    let path = Path::new(&path_str);
+    let expected = "/u/share";
+    let config = PromptConfig::default();
+    assert_eq!(first_letter_full_path(path, &config), expected);
+
+    let path_str = "/home/samyak";
+    let path = Path::new(&path_str);
+    let expected = "/h/samyak";
+    let config = PromptConfig {
+        dir_home_symbol: None,
+        ..PromptConfig::default()
+    };
+    assert_eq!(first_letter_full_path(path, &config), expected);
 }
