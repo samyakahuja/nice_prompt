@@ -3,6 +3,7 @@ name = "nice_prompt"
 version = "0.1.0"
 authors = ["samyakahuja <samyak.mcs18.du@gmail.com>"]
 edition = "2018"
+license = "MIT"
 
 [dependencies]
 git2 = "0.13.6"
