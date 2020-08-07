@@ -1,8 +1,12 @@
 [package]
 name = "nice_prompt"
 version = "0.1.0"
-authors = ["samyakahuja <samyak.mcs18.du@gmail.com>"]
+authors = ["Samyak Ahuja <samyak.mcs18.du@gmail.com>"]
 edition = "2018"
+repository = "https://github.com/samyakahuja/nice_prompt"
+keywords = ["prompt", "shell", "bash"]
+categories = ["command-line-utilities"]
+description = "Minimal prompt for shell"
 license = "MIT"
 
 [dependencies]
