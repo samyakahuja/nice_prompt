@@ -5,6 +5,7 @@ mod prompts;
 mod config;
 mod logging;
 mod util;
+mod cli;
 
 use prompts::{
     git::{GitPrompt, Repository},
@@ -12,9 +13,15 @@ use prompts::{
 };
 use config::PromptConfig;
 use logging::setup_logging;
+use cli::build_cli;
 
 fn main() {
-    setup_logging().expect("Could not setup logging");
+    let matches = build_cli().get_matches();
+
+    if matches.is_present("logging") {
+        setup_logging().expect("Could not setup logging");
+    }
+
     log::trace!("starting application");
 
     let config = PromptConfig::default();

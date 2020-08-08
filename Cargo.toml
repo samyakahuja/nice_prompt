@@ -17,6 +17,7 @@ dirs = "3.0.1"
 log = "0.4.11"
 simplelog = "0.8.0"
 anyhow = "1.0.32"
+clap = "2.33.2"
 
 [dev-dependencies]
 temp_testdir = "0.2.3"
