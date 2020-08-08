@@ -8,6 +8,7 @@ keywords = ["prompt", "shell", "bash"]
 categories = ["command-line-utilities"]
 description = "Minimal prompt for shell"
 license = "MIT"
+readme = "README.md"
 
 [dependencies]
 git2 = "0.13.6"
