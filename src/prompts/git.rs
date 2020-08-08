@@ -17,16 +17,25 @@ pub enum GitStatus {
 
 impl GitPrompt {
     pub fn new(repo: Repository) -> Self {
+        log::trace!("Creating a new `GitPrompt`");
+
         GitPrompt { repo }
     }
 
     pub fn branch(&self) -> Option<String> {
+        log::trace!("Finding git branch");
+
         let head = match self.repo.head() {
-            Ok(reference) => reference,
+            Ok(reference) => {
+                log::debug!("Successfully found reference to HEAD");
+                reference
+            },
             Err(err) => {
-                //dbg!(err.code());
+                log::error!("Did not find head reference: {}", err);
+
                 return if err.code() == git2::ErrorCode::UnbornBranch {
-                    // read the branch name from .git/HEAD
+                    log::debug!("Trying to read head reference from file `.git/HEAD`");
+
                     let head_path = self.repo.path().join("HEAD");
                     let file_contents = std::fs::read_to_string(head_path).ok()?;
                     Some(file_contents.lines().next()?.split("/").last()?.to_string())
@@ -41,12 +50,16 @@ impl GitPrompt {
     }
 
     pub fn head_reference_hash(&self) -> Option<String> {
+        log::trace!("Calculating reference hash for HEAD");
+
         let oid = self.repo.head().ok()?.target()?;
         let oid_12 = oid.to_string()[0..13].to_string();
         Some(oid_12)
     }
 
     pub fn git_status(&self) -> Option<GitStatus> {
+        log::trace!("Calculating git status");
+
         let mut repo_status = GitStatus::Clean;
 
         for file_status in self.repo.statuses(None).ok()?.iter() {
@@ -75,6 +88,8 @@ impl GitPrompt {
     }
 
     pub fn show(&self, config: &PromptConfig) -> String {
+        log::trace!("Show git prompt");
+
         let branch = self.branch();
         let status = self.git_status();
 

@@ -8,7 +8,15 @@ pub struct DirPrompt;
 
 impl DirPrompt {
     pub fn working_dir(&self) -> Option<PathBuf> {
-        std::env::current_dir().ok()
+        log::trace!("Finding working directory");
+
+        let dir = std::env::current_dir().ok();
+        match &dir {
+            Some(dir) => log::debug!("working directory found: {}", dir.display()),
+            None => log::debug!("working directory not found"),
+        }
+
+        dir
     }
 
     pub fn styled_working_dir(&self, config: &PromptConfig) -> Option<String> {
@@ -18,11 +26,14 @@ impl DirPrompt {
         };
 
         let wd = config.dir_style.apply(&wd, config);
+        log::debug!("working directory after applying style: {}", wd);
 
         Some(wd)
     }
 
     pub fn show(&self, config: &PromptConfig) -> String {
+        log::trace!("Show dir prompt");
+
         let s = self.styled_working_dir(config).unwrap_or("".to_string());
         config.dir_color.paint(s).to_string()
     }
@@ -37,6 +48,8 @@ pub enum DirStyle {
 
 impl DirStyle {
     pub fn apply(&self, path: &Path, config: &PromptConfig) -> String {
+        log::trace!("Applying {:?} style to working directory", self);
+
         match self {
             Self::FullPath => full_path(path, config),
             Self::CurrentDir => current_dir(path, config),
@@ -46,6 +59,8 @@ impl DirStyle {
 }
 
 fn encode_home_symbol(path: &Path, symbol: &str) -> Option<String> {
+    log::trace!("Encoding home symbol");
+
     let home_dir = home_dir()?;
     let wd = format!("{}", path.display());
 
@@ -88,10 +103,16 @@ pub fn current_dir(path: &Path, config: &PromptConfig) -> String {
         Some(item) => {
             match item.as_os_str().to_str() {
                 Some(s) => s.to_string(),
-                None => full_path(path, config)
+                None => {
+                    log::error!("Could not convert name to string, Falling back to Full Path dir style");
+                    full_path(path, config)
+                }
             }
         },
-        None => full_path(path, config)
+        None => {
+            log::error!("Could not find last path component, Falling back to Full Path dir style");
+            full_path(path, config)
+        }
     }
 }
 
